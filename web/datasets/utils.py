@@ -22,7 +22,9 @@ import zipfile
 import glob
 import pandas as pd
 from tqdm import tqdm
-from sklearn.datasets.base import Bunch
+#from sklearn.datasets.base import Bunch
+from sklearn.utils import Bunch
+
 from .._utils.compat import _basestring, cPickle, _urllib, md5_hash
 
 
@@ -341,19 +343,31 @@ def _uncompress_file(file_, delete_archive=True, verbose=1):
     """
     if verbose > 0:
         print('Extracting data from %s...' % file_)
+
     data_dir = os.path.dirname(file_)
+
     # We first try to see if it is a zip file
     try:
         filename, ext = os.path.splitext(file_)
+
+        print('filename: ' + str(filename))
+        print('ext: ' + str(ext))
+
         with open(file_, "rb") as fd:
             header = fd.read(4)
         processed = False
+        
         if zipfile.is_zipfile(file_):
+            print('zip file...')
+            
             z = zipfile.ZipFile(file_)
             z.extractall(data_dir)
             z.close()
             processed = True
+        
         elif ext == '.gz' or header.startswith(b'\x1f\x8b'):
+            print('gz file...')
+
             import gzip
             gz = gzip.open(file_)
             if ext == '.tgz':
@@ -368,17 +382,23 @@ def _uncompress_file(file_, delete_archive=True, verbose=1):
             file_ = filename
             filename, ext = os.path.splitext(file_)
             processed = True
+        
         if tarfile.is_tarfile(file_):
+            print('tar file...')
             with contextlib.closing(tarfile.open(file_, "r")) as tar:
                 tar.extractall(path=data_dir)
             processed = True
+        
         if not processed:
             raise IOError(
                     "[Uncompress] unknown archive file format: %s" % file_)
+        
         if delete_archive:
             os.remove(file_)
+        
         if verbose > 0:
             print('   ...done.')
+    
     except Exception as e:
         if verbose > 0:
             print('Error uncompressing file: %s' % e)
@@ -606,6 +626,7 @@ def _fetch_file(url, data_dir=TEMP, uncompress=False, move=False,md5sum=None,
             url_opener = _urllib.request.build_opener(*handlers)
             request = _urllib.request.Request(url)
             request.add_header('Connection', 'Keep-Alive')
+    
             if username is not None and password is not None:
                 if not url.startswith('https'):
                     raise ValueError(
